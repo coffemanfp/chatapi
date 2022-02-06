@@ -13,7 +13,7 @@ import (
 func main() {
 	fmt.Println("Starting...")
 
-	conf, err := config.NewConfig("local", "config")
+	conf, err := config.NewEnvManagerConfig()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -32,7 +32,7 @@ func main() {
 	log.Fatal(server.Run())
 }
 
-func setUpDatabase(conf config.Config) (db database.Database, err error) {
+func setUpDatabase(conf config.ConfigInfo) (db database.Database, err error) {
 	db.Conn = psql.NewPostgreSQLConnector(
 		conf.PostgreSQLProperties.User,
 		conf.PostgreSQLProperties.Password,
@@ -46,13 +46,13 @@ func setUpDatabase(conf config.Config) (db database.Database, err error) {
 		log.Fatal(err)
 	}
 
-	usersRepo, err := psql.NewUserRepository(db.Conn.(*psql.PostgreSQLConnector))
+	authRepo, err := psql.NewAuthRepository(db.Conn.(*psql.PostgreSQLConnector))
 	if err != nil {
 		return
 	}
 
 	db.Repositories = map[database.RepositoryID]interface{}{
-		database.USERS_REPOSITORY: usersRepo,
+		database.AUTH_REPOSITORY: authRepo,
 	}
 	return
 }

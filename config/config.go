@@ -1,21 +1,17 @@
 package config
 
-import (
-	"fmt"
-	"io/ioutil"
-	"path"
+type Config interface {
+	Get() ConfigInfo
+}
 
-	yaml "gopkg.in/yaml.v3"
-)
-
-type Config struct {
+type ConfigInfo struct {
 	Server               server               `yaml:"server"`
 	PostgreSQLProperties postgreSQLProperties `yaml:"psql"`
 }
 
 type server struct {
-	Port int
-	Host string
+	Port int    `yaml:"port"`
+	Host string `yaml:"host"`
 }
 
 type postgreSQLProperties struct {
@@ -24,20 +20,4 @@ type postgreSQLProperties struct {
 	Name     string `yaml:"name"`
 	Host     string `yaml:"host"`
 	Port     int    `yaml:"port"`
-}
-
-func NewConfig(env, configDir string) (conf Config, err error) {
-	p := fmt.Sprintf("%s.yaml", env)
-
-	fileBytes, err := ioutil.ReadFile(path.Join(configDir, p))
-	if err != nil {
-		err = fmt.Errorf("not found: config filepath %s not found", p)
-		return
-	}
-
-	err = yaml.Unmarshal(fileBytes, &conf)
-	if err != nil {
-		err = fmt.Errorf("invalid config: failed to get config info. Bad structure?")
-	}
-	return
 }

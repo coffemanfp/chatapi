@@ -6,3 +6,13 @@ create table if not exists users (
 
     primary key (id)
 );
+
+create table if not exists user_session (
+    id varchar unique not null,
+    user_id integer not null,
+    logged_at timestamp not null,
+    last_seen_at timestamp not null,
+
+    primary key (id),
+    foreign key (user_id) references users(id)
+);

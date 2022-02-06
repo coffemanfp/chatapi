@@ -7,7 +7,7 @@ import (
 
 	"github.com/coffemanfp/chat/database"
 	"github.com/coffemanfp/chat/server/handlers"
-	"github.com/coffemanfp/chat/server/handlers/users"
+	"github.com/coffemanfp/chat/server/handlers/auth"
 	muxhandlers "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
@@ -54,16 +54,16 @@ func setUpMiddlewares(r *mux.Router) {
 }
 
 func setUpUsersHandlers(r *mux.Router, db database.Database) {
-	repo, err := database.GetUsersRepository(db.Repositories)
+	repo, err := database.GetAuthRepository(db.Repositories)
 	if err != nil {
 		return
 	}
 
-	uh := users.NewUsersHandler(
+	ah := auth.NewAuthHandler(
 		repo,
 		handlers.NewRequestReaderImpl(),
 		handlers.NewResponseWriterImpl(),
 	)
 
-	r.HandleFunc("/users", uh.HandleSignUp).Methods("POST")
+	r.HandleFunc("/signup", ah.HandleSignUp).Methods("POST")
 }
