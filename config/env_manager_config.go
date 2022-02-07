@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"golang.org/x/oauth2/facebook"
 	"golang.org/x/oauth2/google"
 )
 
@@ -39,12 +40,21 @@ func newConfigWithEnvVars() (conf ConfigInfo, err error) {
 			Host: os.Getenv("SRV_HOST"),
 		},
 		OAuth: oauth{
-			Google: googleOAuthProperties{
+			Google: oauthProperties{
 				ClientID:     os.Getenv("OAUTH_GOOGLE_CLIENT_ID"),
 				ClientSecret: os.Getenv("OAUTH_GOOGLE_CLIENT_SECRET"),
 				RedirectURIS: strings.Split(os.Getenv("OAUTH_GOOGLE_REDIRECT_URIS"), ";"),
 				Scopes:       strings.Split(os.Getenv("OAUTH_GOOGLE_SCOPES"), ";"),
+				State:        os.Getenv("OAUTH_GOOGLE_STATE"),
 				Endpoint:     google.Endpoint,
+			},
+			Facebook: oauthProperties{
+				ClientID:     os.Getenv("OAUTH_FACEBOOK_CLIENT_ID"),
+				ClientSecret: os.Getenv("OAUTH_FACEBOOK_CLIENT_SECRET"),
+				RedirectURIS: strings.Split(os.Getenv("OAUTH_FACEBOOK_REDIRECT_URIS"), ";"),
+				Scopes:       strings.Split(os.Getenv("OAUTH_FACEBOOK_SCOPES"), ";"),
+				State:        os.Getenv("OAUTH_FACEBOOK_STATE"),
+				Endpoint:     facebook.Endpoint,
 			},
 		},
 		PostgreSQLProperties: postgreSQLProperties{

@@ -18,10 +18,11 @@ type server struct {
 }
 
 type oauth struct {
-	Google googleOAuthProperties `yaml:"google"`
+	Google   oauthProperties `yaml:"google"`
+	Facebook oauthProperties `yaml:"facebook"`
 }
 
-type googleOAuthProperties struct {
+type oauthProperties struct {
 	ClientID     string   `yaml:"client_id"`
 	ClientSecret string   `yaml:"client_secret"`
 	RedirectURIS []string `yaml:"redirect_uris"`

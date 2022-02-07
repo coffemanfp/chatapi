@@ -51,6 +51,14 @@ func (a AuthHandler) HandleSignUp(w http.ResponseWriter, r *http.Request) {
 			RedirectURL:  a.config.OAuth.Google.RedirectURIS[0],
 			Scopes:       a.config.OAuth.Google.Scopes,
 		}, a.config.OAuth.Google.State)
+	case "facebook":
+		a.oauthLogin(w, r, &oauth2.Config{
+			ClientID:     a.config.OAuth.Facebook.ClientID,
+			ClientSecret: a.config.OAuth.Facebook.ClientSecret,
+			Endpoint:     a.config.OAuth.Facebook.Endpoint,
+			RedirectURL:  a.config.OAuth.Facebook.RedirectURIS[0],
+			Scopes:       a.config.OAuth.Facebook.Scopes,
+		}, a.config.OAuth.Facebook.State)
 	default:
 		a.writer.JSON(w, http.StatusBadRequest, handlers.Hash{
 			"code":    http.StatusBadRequest,
@@ -73,6 +81,14 @@ func (a AuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 			RedirectURL:  a.config.OAuth.Google.RedirectURIS[0],
 			Scopes:       a.config.OAuth.Google.Scopes,
 		}, a.config.OAuth.Google.State, handler)
+	case "facebook":
+		a.oauthCallback(w, r, &oauth2.Config{
+			ClientID:     a.config.OAuth.Facebook.ClientID,
+			ClientSecret: a.config.OAuth.Facebook.ClientSecret,
+			Endpoint:     a.config.OAuth.Facebook.Endpoint,
+			RedirectURL:  a.config.OAuth.Facebook.RedirectURIS[0],
+			Scopes:       a.config.OAuth.Facebook.Scopes,
+		}, a.config.OAuth.Facebook.State, handler)
 	default:
 		a.writer.JSON(w, http.StatusBadRequest, handlers.Hash{
 			"code":    http.StatusBadRequest,
@@ -218,6 +234,8 @@ func genURLToRequestUserInfo(accessToken, handler string) (s string) {
 	switch handler {
 	case "google":
 		s = fmt.Sprintf("https://www.googleapis.com/oauth2/v2/userinfo?access_token=%s", url.QueryEscape(accessToken))
+	case "facebook":
+		s = fmt.Sprintf("https://graph.facebook.com/me?access_token=%s&fields=email", url.QueryEscape(accessToken))
 	}
 	return
 }
