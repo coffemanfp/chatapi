@@ -23,7 +23,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	server, err := server.NewServer(db, conf.Server.Host, conf.Server.Port)
+	server, err := server.NewServer(conf, db, conf.Server.Host, conf.Server.Port)
 	if err != nil {
 		log.Fatal(err)
 	}

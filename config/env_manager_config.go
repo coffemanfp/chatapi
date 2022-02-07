@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
+
+	"golang.org/x/oauth2/google"
 )
 
 type EnvManagerConfig struct {
@@ -34,6 +37,15 @@ func newConfigWithEnvVars() (conf ConfigInfo, err error) {
 		Server: server{
 			Port: srvPort,
 			Host: os.Getenv("SRV_HOST"),
+		},
+		OAuth: oauth{
+			Google: googleOAuthProperties{
+				ClientID:     os.Getenv("OAUTH_GOOGLE_CLIENT_ID"),
+				ClientSecret: os.Getenv("OAUTH_GOOGLE_CLIENT_SECRET"),
+				RedirectURIS: strings.Split(os.Getenv("OAUTH_GOOGLE_REDIRECT_URIS"), ";"),
+				Scopes:       strings.Split(os.Getenv("OAUTH_GOOGLE_SCOPES"), ";"),
+				Endpoint:     google.Endpoint,
+			},
 		},
 		PostgreSQLProperties: postgreSQLProperties{
 			User:     os.Getenv("DB_USER"),

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/coffemanfp/chat/config"
 	"github.com/coffemanfp/chat/database"
 	"github.com/coffemanfp/chat/server/handlers"
 	"github.com/coffemanfp/chat/server/handlers/auth"
@@ -20,13 +21,13 @@ func (s Server) Run() (err error) {
 	return s.srv.ListenAndServe()
 }
 
-func NewServer(db database.Database, host string, port int) (server *Server, err error) {
+func NewServer(conf config.ConfigInfo, db database.Database, host string, port int) (server *Server, err error) {
 	r := mux.NewRouter().StrictSlash(false)
 	v1R := r.PathPrefix("/api/v1").Subrouter()
 
 	setUpMiddlewares(r)
 	setUpAPIHandlers(r)
-	setUpUsersHandlers(v1R, db)
+	setUpUsersHandlers(v1R, conf, db)
 
 	srv := &http.Server{
 		Handler:      r,
@@ -51,9 +52,10 @@ func setUpAPIHandlers(r *mux.Router) {
 func setUpMiddlewares(r *mux.Router) {
 	r.Use(logginMiddleware)
 	r.Use(muxhandlers.RecoveryHandler())
+	r.Use(muxhandlers.CORS())
 }
 
-func setUpUsersHandlers(r *mux.Router, db database.Database) {
+func setUpUsersHandlers(r *mux.Router, conf config.ConfigInfo, db database.Database) {
 	repo, err := database.GetAuthRepository(db.Repositories)
 	if err != nil {
 		return
@@ -63,7 +65,9 @@ func setUpUsersHandlers(r *mux.Router, db database.Database) {
 		repo,
 		handlers.NewRequestReaderImpl(),
 		handlers.NewResponseWriterImpl(),
+		conf,
 	)
 
-	r.HandleFunc("/signup", ah.HandleSignUp).Methods("POST")
+	r.HandleFunc("/auth/signup/{handler}", ah.HandleSignUp).Methods("GET")
+	r.HandleFunc("/auth/callback/{handler}", ah.HandleCallback).Methods("GET")
 }
