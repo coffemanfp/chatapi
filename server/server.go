@@ -52,7 +52,7 @@ func setUpAPIHandlers(r *mux.Router) {
 func setUpMiddlewares(r *mux.Router) {
 	r.Use(logginMiddleware)
 	r.Use(muxhandlers.RecoveryHandler())
-	r.Use(muxhandlers.CORS())
+	r.Use(corsMiddleware)
 }
 
 func setUpUsersHandlers(r *mux.Router, conf config.ConfigInfo, db database.Database) {
@@ -68,6 +68,6 @@ func setUpUsersHandlers(r *mux.Router, conf config.ConfigInfo, db database.Datab
 		conf,
 	)
 
-	r.HandleFunc("/auth/signup/{handler}", ah.HandleSignUp).Methods("GET")
-	r.HandleFunc("/auth/callback/{handler}", ah.HandleCallback).Methods("GET")
+	r.HandleFunc("/auth/signup/{handler}", ah.HandleSignUp).Methods("GET", "POST")
+	r.HandleFunc("/auth/external-sign/{handler}", ah.HandleExternalSign).Methods("GET")
 }
