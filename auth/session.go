@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -8,14 +9,21 @@ import (
 
 type Session struct {
 	ID         string    `json:"id,omitempty"`
-	Nickname   string    `json:"nickname,omitempty"`
+	TmpID      string    `json:"tmp_id,omitempty"`
+	UserID     int       `json:"nickname,omitempty"`
 	LoggedAt   time.Time `json:"logged_at,omitempty"`
 	LastSeenAt time.Time `json:"last_seen_at,omitempty"`
 	LoggedWith string    `json:"logged_with,omitempty"`
+	Actived    bool      `json:"actived,omitempty"`
 }
 
-func NewSession(nickname, loggedWith string) (session Session, err error) {
-	sessionID, err := HashPassword(nickname + uuid.NewString())
+func NewSession(userID int, loggedWith string) (session Session, err error) {
+	sessionID, err := HashPassword(fmt.Sprint(userID, uuid.NewString()))
+	if err != nil {
+		return
+	}
+
+	tmpID, err := HashPassword(fmt.Sprint(uuid.NewString(), sessionID))
 	if err != nil {
 		return
 	}
@@ -24,10 +32,12 @@ func NewSession(nickname, loggedWith string) (session Session, err error) {
 
 	session = Session{
 		ID:         sessionID,
-		Nickname:   nickname,
+		TmpID:      tmpID,
+		UserID:     userID,
 		LoggedWith: loggedWith,
 		LoggedAt:   now,
 		LastSeenAt: now,
+		Actived:    true,
 	}
 	return
 }

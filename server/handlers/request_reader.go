@@ -37,6 +37,5 @@ func NewRequestReaderImpl() RequestReaderImpl {
 }
 
 func checkContentTypeJSON(h http.Header) (match bool) {
-	fmt.Printf("Content-Type is %s\n", h.Get("Content-Type"))
 	return h.Get("Content-Type") == "application/json"
 }

@@ -23,11 +23,15 @@ create table if not exists external_user_auth (
 
 create table if not exists user_session (
     id varchar unique not null,
+    tmp_id varchar unique,
     user_id integer not null,
     logged_at timestamp not null,
     last_seen_at timestamp not null,
     logged_with varchar,
+    actived boolean,
 
     primary key (id),
     foreign key (user_id) references users(id)
 );
+
+create unique index idx_user_id_actived on user_session(user_id, actived);

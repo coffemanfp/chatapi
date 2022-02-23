@@ -1,14 +1,15 @@
 package users
 
 import (
-	"fmt"
 	"net"
+	"net/http"
 	"net/mail"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/coffemanfp/chat/auth"
+	"github.com/coffemanfp/chat/errors"
 )
 
 type User struct {
@@ -30,20 +31,27 @@ type ExternalSigned struct {
 }
 
 func New(userR User) (user User, err error) {
-	var ph string
 	if len(userR.SignedWith) == 0 {
 		err = ValidateNickname(userR.Nickname)
 		if err != nil {
 			return
 		}
-		ph, err = auth.HashPassword(userR.Password)
+		err = HashPassword(&user.Password)
 		if err != nil {
 			return
 		}
 	}
 	user = userR
-	user.Password = ph
 	user.CreatedAt = time.Now()
+	return
+}
+
+func HashPassword(orig *string) (err error) {
+	h, err := auth.HashPassword(*orig)
+	if err != nil {
+		return
+	}
+	orig = &h
 	return
 }
 
@@ -51,7 +59,7 @@ var nicknameRegex = regexp.MustCompile(`^[^0-9]\w+$`)
 
 func ValidateNickname(nickname string) (err error) {
 	if !nicknameRegex.MatchString(nickname) {
-		err = fmt.Errorf("invalid nickname: invalid nickname format of %s", nickname)
+		err = errors.NewClientError(http.StatusBadRequest, "invalid nickname: invalid nickname format of %s", nickname)
 	}
 	return
 }
@@ -59,14 +67,14 @@ func ValidateNickname(nickname string) (err error) {
 func ValidateEmail(email string) (err error) {
 	_, err = mail.ParseAddress(email)
 	if err != nil {
-		err = fmt.Errorf("invalid email format: %s is not valid, cause %s", email, err)
+		err = errors.NewClientError(http.StatusBadRequest, "invalid email format: %s is not valid, cause %s", email, err)
 		return
 	}
 
 	parts := strings.Split(email, "@")
 	_, err = net.LookupHost(parts[1])
 	if err != nil {
-		err = fmt.Errorf("invalid email host: %s not exists", parts[1])
+		err = errors.NewClientError(http.StatusBadRequest, "invalid email host: %s not exists", parts[1])
 	}
 	return
 }

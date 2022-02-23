@@ -27,7 +27,7 @@ func NewServer(conf config.ConfigInfo, db database.Database, host string, port i
 
 	setUpMiddlewares(r)
 	setUpAPIHandlers(r)
-	setUpUsersHandlers(v1R, conf, db)
+	setUpAuthHandlers(v1R, conf, db)
 
 	srv := &http.Server{
 		Handler:      r,
@@ -43,7 +43,7 @@ func NewServer(conf config.ConfigInfo, db database.Database, host string, port i
 }
 
 func setUpAPIHandlers(r *mux.Router) {
-	r.HandleFunc("/healthcheck/{id:[0-9]+}", func(w http.ResponseWriter, r *http.Request) {
+	r.HandleFunc("/healthcheck", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprint(w, "OK")
 	}).Methods("GET")
@@ -51,11 +51,11 @@ func setUpAPIHandlers(r *mux.Router) {
 
 func setUpMiddlewares(r *mux.Router) {
 	r.Use(logginMiddleware)
-	r.Use(muxhandlers.RecoveryHandler())
-	r.Use(corsMiddleware)
+	r.Use(muxhandlers.RecoveryHandler(muxhandlers.PrintRecoveryStack(true)))
+	r.Use(muxhandlers.CORS(muxhandlers.AllowedOrigins([]string{"http://localhost:3000/"})))
 }
 
-func setUpUsersHandlers(r *mux.Router, conf config.ConfigInfo, db database.Database) {
+func setUpAuthHandlers(r *mux.Router, conf config.ConfigInfo, db database.Database) {
 	repo, err := database.GetAuthRepository(db.Repositories)
 	if err != nil {
 		return
@@ -68,6 +68,5 @@ func setUpUsersHandlers(r *mux.Router, conf config.ConfigInfo, db database.Datab
 		conf,
 	)
 
-	r.HandleFunc("/auth/signup/{handler}", ah.HandleSignUp).Methods("GET", "POST")
-	r.HandleFunc("/auth/external-sign/{handler}", ah.HandleExternalSign).Methods("GET")
+	r.HandleFunc("/auth/{action}/{handler}", ah.HandleAuth).Methods("GET", "POST")
 }

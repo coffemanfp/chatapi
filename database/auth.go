@@ -24,5 +24,6 @@ func GetAuthRepository(repoMap map[RepositoryID]interface{}) (repo AuthRepositor
 
 type AuthRepository interface {
 	SignUp(user users.User, session auth.Session) (int, error)
-	FindPassword(nickname string) (string, error)
+	MatchCredentials(user users.User) (int, error)
+	UpsertSession(session auth.Session) error
 }

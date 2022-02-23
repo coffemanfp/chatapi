@@ -4,9 +4,13 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/http"
+	"strings"
 
 	"github.com/coffemanfp/chat/auth"
+	sErrors "github.com/coffemanfp/chat/errors"
 	"github.com/coffemanfp/chat/users"
+	"github.com/lib/pq"
 )
 
 type AuthRepository struct {
@@ -47,8 +51,21 @@ func (u AuthRepository) SignUp(user users.User, session auth.Session) (id int, e
 	`
 
 	err = tx.QueryRow(qInsertUser, user.Nickname, user.Email, user.Password, user.Picture, user.CreatedAt).Scan(&id)
-	if err != nil {
-		err = fmt.Errorf("failed to insert user %s: %s", user.Nickname, err)
+	if pErr, ok := err.(*pq.Error); ok {
+		switch pErr.Code {
+		case foreign_key_violation:
+			field := pErr.Detail[strings.Index(pErr.Detail, "(")+1 : strings.Index(pErr.Detail, ")")]
+			var v interface{}
+			switch field {
+			case "nickname":
+				v = user.Nickname
+			case "email":
+				v = user.Email
+			}
+			err = sErrors.NewClientError(http.StatusConflict, "already exists %s: %v", field, v)
+		default:
+			err = sErrors.NewClientError(http.StatusInternalServerError, "failed to insert user %s: %s", user.Nickname, err)
+		}
 		return
 	}
 
@@ -62,35 +79,47 @@ func (u AuthRepository) SignUp(user users.User, session auth.Session) (id int, e
 				($1, $2, $3, $4, $5, $6)
 		`
 		_, err = tx.Exec(qInsertExtUserAuth, sign.ID, id, sign.Email, sign.Picture, sign.Platform, sign.CreatedAt)
-		if err != nil {
-			err = fmt.Errorf("failed to insert external user auth %s: %s", user.Nickname, err)
+		if pErr, ok := err.(*pq.Error); ok {
+			switch pErr.Code {
+			case foreign_key_violation:
+				err = sErrors.NewClientError(http.StatusConflict, "already exists id: %s", sign.ID)
+			default:
+				err = sErrors.NewClientError(http.StatusInternalServerError, "failed to insert external user auth %s: %s", user.Nickname, err)
+			}
 			return
 		}
-	}
-
-	qInsertSession := `
-		insert into
-			user_session(id, user_id, logged_at, last_seen_at, logged_with)
-		values
-			($1, $2, $3, $4, $5)
-	`
-
-	_, err = tx.Exec(qInsertSession, session.ID, id, session.LoggedAt, session.LastSeenAt, session.LoggedWith)
-	if err != nil {
-		err = fmt.Errorf("failed to insert session of %s: %s", user.Nickname, err)
 	}
 	return
 }
 
-func (u AuthRepository) FindPassword(nickname string) (pw string, err error) {
-	query := `
-		select password from users where nickname = $1
+func (u AuthRepository) UpsertSession(session auth.Session) (err error) {
+	qInsertSession := `
+		insert into
+			user_session(id, tmp_id, user_id, logged_at, last_seen_at, logged_with, actived)
+		values
+			($1, $2, $3, $4, $5, $6, $7)
+		on conflict (user_id, actived) do update set
+			last_seen_at=$5, tmp_id = null
+		where
+			user_session.user_id=$3 and user_session.actived;
 	`
 
-	err = u.db.QueryRow(query, nickname).Scan(&pw)
+	_, err = u.db.Exec(qInsertSession, session.ID, session.TmpID, session.UserID, session.LoggedAt, session.LastSeenAt, session.LoggedWith, session.Actived)
+	if err != nil {
+		err = fmt.Errorf("failed to insert session of %d: %s", session.UserID, err)
+	}
+	return
+}
+
+func (u AuthRepository) MatchCredentials(user users.User) (id int, err error) {
+	query := `
+		select id from users where (nickname = $1 and password = $3) or (email = $2 and password = $3)
+	`
+
+	err = u.db.QueryRow(query, user.Nickname, user.Email, user.Password).Scan(&id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			err = fmt.Errorf("not found: %s not exists", nickname)
+			err = nil
 			return
 		}
 		err = fmt.Errorf("failed to get user credentials: %s", err)

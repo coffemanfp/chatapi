@@ -11,8 +11,6 @@ import (
 )
 
 func main() {
-	fmt.Println("Starting...")
-
 	conf, err := config.NewEnvManagerConfig()
 	if err != nil {
 		log.Fatal(err)

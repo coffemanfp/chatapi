@@ -24,11 +24,10 @@ func (o oauth) redirectToHandler(w http.ResponseWriter, r *http.Request) (err er
 	if err != nil {
 		err = fmt.Errorf("failed to parse auth url: %s", err)
 		return
-
 	}
+
 	state := uuid.NewString()
 	o.validStates[state] = true
-	fmt.Println(authURL.String(), state)
 
 	parameters := url.Values{}
 
@@ -71,7 +70,7 @@ func (o oauth) callback(w http.ResponseWriter, r *http.Request) (response []byte
 
 	resp, err := http.Get(genURLToRequestUserInfo(token.AccessToken, o.handler))
 	if err != nil {
-		fmt.Printf("failed to request user info from %s: %s\n", o.handler, err)
+		err = fmt.Errorf("failed to request user info from %s: %s", o.handler, err)
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	}
@@ -79,10 +78,9 @@ func (o oauth) callback(w http.ResponseWriter, r *http.Request) (response []byte
 
 	response, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Printf("failed to read user info from %s: %s\n", o.handler, err)
+		err = fmt.Errorf("failed to read user info from %s: %s", o.handler, err)
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 	}
-	fmt.Println(string(response))
 	return
 }
 

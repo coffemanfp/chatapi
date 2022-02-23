@@ -13,7 +13,7 @@ type systemSignUpHandler struct {
 	writer handlers.ResponseWriter
 }
 
-func (s systemSignUpHandler) getUser(w http.ResponseWriter, r *http.Request) (user users.User, err error) {
+func (s systemSignUpHandler) readUser(w http.ResponseWriter, r *http.Request) (user users.User, err error) {
 	err = s.reader.JSON(r, &user)
 	if err != nil {
 		fmt.Printf("failed for %s\n", err)

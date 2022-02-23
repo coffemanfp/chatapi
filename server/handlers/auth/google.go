@@ -16,7 +16,7 @@ type googleHandler struct {
 	name  string
 }
 
-func (g googleHandler) getUser(w http.ResponseWriter, r *http.Request) (user users.User, err error) {
+func (g googleHandler) readUser(w http.ResponseWriter, r *http.Request) (user users.User, err error) {
 	resp, err := g.oauth.callback(w, r)
 	if err != nil {
 		return

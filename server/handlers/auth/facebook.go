@@ -16,7 +16,7 @@ type facebookHandler struct {
 	name  string
 }
 
-func (f facebookHandler) getUser(w http.ResponseWriter, r *http.Request) (user users.User, err error) {
+func (f facebookHandler) readUser(w http.ResponseWriter, r *http.Request) (user users.User, err error) {
 	resp, err := f.oauth.callback(w, r)
 	if err != nil {
 		return
