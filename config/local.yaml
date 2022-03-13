@@ -1,9 +1,0 @@
-server:
-  port: 8080
-  host: localhost
-psql:
-  user: chat
-  password: Chat1234
-  name: chatdb
-  host: localhost
-  port: 5432

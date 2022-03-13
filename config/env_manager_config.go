@@ -10,6 +10,7 @@ import (
 	"golang.org/x/oauth2/google"
 )
 
+// EnvManagerConfig is the Config implementation for the environment config vars.
 type EnvManagerConfig struct {
 	config ConfigInfo
 }
@@ -18,6 +19,9 @@ func (f EnvManagerConfig) Get() ConfigInfo {
 	return f.config
 }
 
+// NewEnvManagerConfig initializes a new ConfigInfo instance by the env config vars.
+// 	@return conf ConfigInfo: new ConfigInfo instance with the env vars information.
+// 	@return err error: error getting env vars values.
 func NewEnvManagerConfig() (conf ConfigInfo, err error) {
 	conf, err = newConfigWithEnvVars()
 	return

@@ -1,3 +1,4 @@
+// Package auth implements the security utils for the common users.
 package auth
 
 import (
@@ -6,6 +7,10 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// HashPassword uses the bcrypt algorithm to encrypt the password provided.
+//  @param password string: password to encrypt.
+//  @return FIRST string: password encrypted.
+//  @return err error: bcrypt encryptation error.
 func HashPassword(password string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
 	if err != nil {

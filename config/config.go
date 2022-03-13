@@ -1,11 +1,16 @@
+// Package config handles all the config implementations like env and file config.
+// The supported config types are: yaml files and environment vars.
 package config
 
 import "golang.org/x/oauth2"
 
+// Config is a interface to get the config of a given implementation.
 type Config interface {
+	// Get will get all the ConfigInfo available in the implementation
 	Get() ConfigInfo
 }
 
+// ConfigInfo is the common structure to contain all the config fields.
 type ConfigInfo struct {
 	Server               server               `yaml:"server"`
 	OAuth                oauth                `yaml:"oauth"`
