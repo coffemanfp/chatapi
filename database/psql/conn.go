@@ -15,12 +15,14 @@ type properties struct {
 	port int
 }
 
+// PostgreSQLConnector implements a database.DatabaseConnector handler.
+// 	It is a handler for the PostgreSQL connections.
 type PostgreSQLConnector struct {
 	props properties
 	db    *sql.DB
 }
 
-func (p *PostgreSQLConnector) Connect() (err error) {
+func (p *PostgreSQLConnector) connect() (err error) {
 	db, err := sql.Open("postgres", connURL(p.props))
 	if err != nil {
 		return
@@ -36,6 +38,12 @@ func (p *PostgreSQLConnector) Connect() (err error) {
 }
 
 func (p PostgreSQLConnector) GetConn() (conn *sql.DB, err error) {
+	if p.db == nil {
+		err = p.connect()
+		if err != nil {
+			return
+		}
+	}
 	err = p.db.Ping()
 	if err != nil {
 		err = fmt.Errorf("failed to ping database: %s", err)
@@ -46,6 +54,13 @@ func (p PostgreSQLConnector) GetConn() (conn *sql.DB, err error) {
 	return
 }
 
+// NewPostgreSQLConnector initializes a new *PostgreSQLConnector.
+// 	@param user string: PostgreSQL connection property.
+// 	@param pass string: PostgreSQL connection property.
+// 	@param name string: PostgreSQL connection property.
+// 	@param host string: PostgreSQL connection property.
+// 	@param port int: PostgreSQL connection property.
+// 	@return conn *PostgreSQLConnector: new *PostgreSQLConnector instance.
 func NewPostgreSQLConnector(user, pass, name, host string, port int) (conn *PostgreSQLConnector) {
 	return &PostgreSQLConnector{
 		props: properties{

@@ -5,19 +5,24 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/coffemanfp/chat/auth"
+	"github.com/coffemanfp/chat/database"
 	sErrors "github.com/coffemanfp/chat/errors"
 	"github.com/coffemanfp/chat/users"
-	"github.com/lib/pq"
 )
 
+// AuthRepository is the implementation of a authentication repository for the PostgreSQL database.
 type AuthRepository struct {
 	db *sql.DB
 }
 
-func NewAuthRepository(conn *PostgreSQLConnector) (authRepo AuthRepository, err error) {
+// NewAuthRepository initializes a new auth repository instance.
+// 	@param conn *PostgreSQLConnector: is the PostgreSQLConnector handler.
+//	@return authRepo database.AuthRepository: is the final interface to keep
+//	 the AuthRepository implementation.
+//	@return err error: database connection error.
+func NewAuthRepository(conn *PostgreSQLConnector) (authRepo database.AuthRepository, err error) {
 	db, err := conn.GetConn()
 	if err != nil {
 		return
@@ -51,24 +56,18 @@ func (u AuthRepository) SignUp(user users.User, session auth.Session) (id int, e
 	`
 
 	err = tx.QueryRow(qInsertUser, user.Nickname, user.Email, user.Password, user.Picture, user.CreatedAt).Scan(&id)
-	if pErr, ok := err.(*pq.Error); ok {
-		switch pErr.Code {
-		case foreign_key_violation:
-			field := pErr.Detail[strings.Index(pErr.Detail, "(")+1 : strings.Index(pErr.Detail, ")")]
-			var v interface{}
-			switch field {
-			case "nickname":
-				v = user.Nickname
-			case "email":
-				v = user.Email
-			}
-			err = sErrors.NewClientError(http.StatusConflict, "already exists %s: %v", field, v)
-		default:
+	if err != nil {
+		var match bool
+		match, err = newPQError(err).asAlreadyExists()
+		if match {
+			err = sErrors.NewClientError(http.StatusConflict, err.Error())
+		} else {
 			err = sErrors.NewClientError(http.StatusInternalServerError, "failed to insert user %s: %s", user.Nickname, err)
 		}
 		return
 	}
 
+	// If the user has been sign with a external platform, insert the external platform sign record.
 	if len(user.SignedWith) > 0 {
 		sign := user.SignedWith[0]
 
@@ -79,14 +78,14 @@ func (u AuthRepository) SignUp(user users.User, session auth.Session) (id int, e
 				($1, $2, $3, $4, $5, $6)
 		`
 		_, err = tx.Exec(qInsertExtUserAuth, sign.ID, id, sign.Email, sign.Picture, sign.Platform, sign.CreatedAt)
-		if pErr, ok := err.(*pq.Error); ok {
-			switch pErr.Code {
-			case foreign_key_violation:
-				err = sErrors.NewClientError(http.StatusConflict, "already exists id: %s", sign.ID)
-			default:
-				err = sErrors.NewClientError(http.StatusInternalServerError, "failed to insert external user auth %s: %s", user.Nickname, err)
+		if err != nil {
+			var match bool
+			match, err = newPQError(err).asAlreadyExists()
+			if match {
+				err = sErrors.NewClientError(http.StatusConflict, err.Error())
+			} else {
+				err = sErrors.NewClientError(http.StatusInternalServerError, "failed to insert external user auth %s %s: %s", user.Nickname, sign.Platform, err)
 			}
-			return
 		}
 	}
 	return
