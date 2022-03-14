@@ -22,7 +22,7 @@ type PostgreSQLConnector struct {
 	db    *sql.DB
 }
 
-func (p *PostgreSQLConnector) connect() (err error) {
+func (p *PostgreSQLConnector) Connect() (err error) {
 	db, err := sql.Open("postgres", connURL(p.props))
 	if err != nil {
 		return
@@ -37,9 +37,9 @@ func (p *PostgreSQLConnector) connect() (err error) {
 	return
 }
 
-func (p PostgreSQLConnector) GetConn() (conn *sql.DB, err error) {
+func (p PostgreSQLConnector) getConn() (conn *sql.DB, err error) {
 	if p.db == nil {
-		err = p.connect()
+		err = p.Connect()
 		if err != nil {
 			return
 		}

@@ -40,8 +40,9 @@ func newConfigWithEnvVars() (conf ConfigInfo, err error) {
 
 	conf = ConfigInfo{
 		Server: server{
-			Port: srvPort,
-			Host: os.Getenv("SRV_HOST"),
+			Port:           srvPort,
+			Host:           os.Getenv("SRV_HOST"),
+			AllowedOrigins: strings.Split(os.Getenv("SRV_ALLOWED_ORIGINS"), ";"),
 		},
 		OAuth: oauth{
 			Google: oauthProperties{
@@ -49,7 +50,6 @@ func newConfigWithEnvVars() (conf ConfigInfo, err error) {
 				ClientSecret: os.Getenv("OAUTH_GOOGLE_CLIENT_SECRET"),
 				RedirectURIS: strings.Split(os.Getenv("OAUTH_GOOGLE_REDIRECT_URIS"), ";"),
 				Scopes:       strings.Split(os.Getenv("OAUTH_GOOGLE_SCOPES"), ";"),
-				State:        os.Getenv("OAUTH_GOOGLE_STATE"),
 				Endpoint:     google.Endpoint,
 			},
 			Facebook: oauthProperties{
@@ -57,7 +57,6 @@ func newConfigWithEnvVars() (conf ConfigInfo, err error) {
 				ClientSecret: os.Getenv("OAUTH_FACEBOOK_CLIENT_SECRET"),
 				RedirectURIS: strings.Split(os.Getenv("OAUTH_FACEBOOK_REDIRECT_URIS"), ";"),
 				Scopes:       strings.Split(os.Getenv("OAUTH_FACEBOOK_SCOPES"), ";"),
-				State:        os.Getenv("OAUTH_FACEBOOK_STATE"),
 				Endpoint:     facebook.Endpoint,
 			},
 		},

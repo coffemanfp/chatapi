@@ -12,7 +12,7 @@ type Database struct {
 // DatabaseConnector defines a database connector handler.
 type DatabaseConnector interface {
 
-	// GetConn gets a already existent or new connection of the database implementation.
+	// Connect creates new connection of the database implementation.
 	//  @return $1 error: database connection error
-	GetConn() error
+	Connect() error
 }

@@ -19,8 +19,9 @@ func (p pqErrHandler) asAlreadyExists() (match bool, err error) {
 	match = p.pqErr.Code == foreign_key_violation
 	if match {
 		err = fmt.Errorf("already exists %s", getFieldFromDetail(p.pqErr))
+	} else {
+		err = p.pqErr
 	}
-
 	return
 }
 

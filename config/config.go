@@ -16,8 +16,9 @@ type ConfigInfo struct {
 }
 
 type server struct {
-	Port int    `yaml:"port"`
-	Host string `yaml:"host"`
+	Port           int      `yaml:"port"`
+	Host           string   `yaml:"host"`
+	AllowedOrigins []string `yaml:"allowed_origins"`
 }
 
 type oauth struct {
@@ -30,7 +31,6 @@ type oauthProperties struct {
 	ClientSecret string   `yaml:"client_secret"`
 	RedirectURIS []string `yaml:"redirect_uris"`
 	Scopes       []string `yaml:"scopes"`
-	State        string   `yaml:"state"`
 	Endpoint     oauth2.Endpoint
 }
 

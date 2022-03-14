@@ -23,7 +23,7 @@ type AuthRepository struct {
 //	 the AuthRepository implementation.
 //	@return err error: database connection error.
 func NewAuthRepository(conn *PostgreSQLConnector) (authRepo database.AuthRepository, err error) {
-	db, err := conn.GetConn()
+	db, err := conn.getConn()
 	if err != nil {
 		return
 	}
@@ -62,7 +62,7 @@ func (u AuthRepository) SignUp(user users.User, session auth.Session) (id int, e
 		if match {
 			err = sErrors.NewClientError(http.StatusConflict, err.Error())
 		} else {
-			err = sErrors.NewClientError(http.StatusInternalServerError, "failed to insert user %s: %s", user.Nickname, err)
+			err = fmt.Errorf("failed to insert user %s: %s", user.Nickname, err)
 		}
 		return
 	}
@@ -84,7 +84,7 @@ func (u AuthRepository) SignUp(user users.User, session auth.Session) (id int, e
 			if match {
 				err = sErrors.NewClientError(http.StatusConflict, err.Error())
 			} else {
-				err = sErrors.NewClientError(http.StatusInternalServerError, "failed to insert external user auth %s %s: %s", user.Nickname, sign.Platform, err)
+				err = fmt.Errorf("failed to insert external user auth %s %s: %s", user.Nickname, sign.Platform, err)
 			}
 		}
 	}
