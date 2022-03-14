@@ -11,12 +11,14 @@ import (
 	"golang.org/x/oauth2"
 )
 
+const facebookHandlerName handlerName = "facebook"
+
 type facebookHandler struct {
 	oauth oauth
-	name  string
+	name  handlerName
 }
 
-func (f facebookHandler) readUser(w http.ResponseWriter, r *http.Request) (user users.User, err error) {
+func (f facebookHandler) read(w http.ResponseWriter, r *http.Request) (user users.User, err error) {
 	resp, err := f.oauth.callback(w, r)
 	if err != nil {
 		return
@@ -47,22 +49,17 @@ func (f facebookHandler) parseUserInfo(b []byte) (user users.User, err error) {
 		return
 	}
 
-	user = users.User{
-		SignedWith: []users.ExternalSigned{
-			{
-				ID:        userInfo.ID,
-				Email:     userInfo.Email,
-				Platform:  f.name,
-				CreatedAt: time.Now(),
-				Picture:   userInfo.Picture.Data.URL,
-			},
-		},
-	}
+	user.SignedWith = append(user.SignedWith, users.ExternalSigned{
+		ID:        userInfo.ID,
+		Email:     userInfo.Email,
+		Platform:  f.name.string(),
+		CreatedAt: time.Now(),
+		Picture:   userInfo.Picture.Data.URL,
+	})
 	return
 }
 
 func newFacebookHandler(conf config.ConfigInfo) facebookHandler {
-	name := "facebook"
 	return facebookHandler{
 		oauth: oauth{
 			conf: &oauth2.Config{
@@ -72,9 +69,9 @@ func newFacebookHandler(conf config.ConfigInfo) facebookHandler {
 				RedirectURL:  conf.OAuth.Facebook.RedirectURIS[0],
 				Scopes:       conf.OAuth.Facebook.Scopes,
 			},
-			handler:     name,
+			handler:     facebookHandlerName,
 			validStates: make(map[string]bool),
 		},
-		name: name,
+		name: facebookHandlerName,
 	}
 }

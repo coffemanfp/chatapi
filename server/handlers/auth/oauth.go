@@ -15,7 +15,7 @@ import (
 
 type oauth struct {
 	conf        *oauth2.Config
-	handler     string
+	handler     handlerName
 	validStates map[string]bool
 }
 
@@ -68,7 +68,7 @@ func (o oauth) callback(w http.ResponseWriter, r *http.Request) (response []byte
 		return
 	}
 
-	resp, err := http.Get(genURLToRequestUserInfo(token.AccessToken, o.handler))
+	resp, err := http.Get(genURLToRequestUserInfo(token.AccessToken, o.handler.string()))
 	if err != nil {
 		err = fmt.Errorf("failed to request user info from %s: %s", o.handler, err)
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)

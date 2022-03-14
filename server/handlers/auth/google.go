@@ -11,12 +11,14 @@ import (
 	"golang.org/x/oauth2"
 )
 
+const googleHandlerName handlerName = "google"
+
 type googleHandler struct {
 	oauth oauth
-	name  string
+	name  handlerName
 }
 
-func (g googleHandler) readUser(w http.ResponseWriter, r *http.Request) (user users.User, err error) {
+func (g googleHandler) read(w http.ResponseWriter, r *http.Request) (user users.User, err error) {
 	resp, err := g.oauth.callback(w, r)
 	if err != nil {
 		return
@@ -48,7 +50,7 @@ func (g googleHandler) parseUserInfo(b []byte) (user users.User, err error) {
 			{
 				ID:        userInfo.ID,
 				Email:     userInfo.Email,
-				Platform:  g.name,
+				Platform:  g.name.string(),
 				CreatedAt: time.Now(),
 				Picture:   userInfo.Picture,
 			},
@@ -58,7 +60,6 @@ func (g googleHandler) parseUserInfo(b []byte) (user users.User, err error) {
 }
 
 func newGoogleHandler(conf config.ConfigInfo) googleHandler {
-	name := "google"
 	return googleHandler{
 		oauth: oauth{
 			conf: &oauth2.Config{
@@ -68,10 +69,10 @@ func newGoogleHandler(conf config.ConfigInfo) googleHandler {
 				RedirectURL:  conf.OAuth.Google.RedirectURIS[0],
 				Scopes:       conf.OAuth.Google.Scopes,
 			},
-			handler:     name,
+			handler:     googleHandlerName,
 			validStates: make(map[string]bool),
 		},
-		name: name,
+		name: googleHandlerName,
 	}
 
 }

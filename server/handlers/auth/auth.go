@@ -16,23 +16,52 @@ import (
 	"github.com/gorilla/mux"
 )
 
+type handlerName string
+
+func (hN handlerName) string() string {
+	return string(hN)
+}
+
+// AuthHandler represents a handler for sign actions like sign up and login.
+// Handles external sign platforms and own-server sign service.
 type AuthHandler struct {
-	config               config.ConfigInfo
-	repository           database.AuthRepository
-	writer               handlers.ResponseWriter
-	reader               handlers.RequestReader
-	userReaders          map[string]userReader
-	externalSignHandlers map[string]externalSignUpHandler
+	config     config.ConfigInfo
+	repository database.AuthRepository
+	writer     handlers.ResponseWriter
+	reader     handlers.RequestReader
+
+	// userReaders keeps the services to be used for read the user info which is trying to sign.
+	userReaders map[handlerName]userReader
+
+	// externalSignHandlers keeps the external platform services to redirect for the user performs its sign process.
+	externalSignHandlers map[handlerName]externalSignUpHandler
 }
 
+// userReader represents a service which reads the user info.
 type userReader interface {
-	readUser(w http.ResponseWriter, r *http.Request) (users.User, error)
+	// read reads the user info and return it in a new instance.
+	//  @param w http.ResponseWriter: response writer of the call.
+	//  @param r *http.Request: request instance of the call.
+	//	@return $1 users.User: new user information instance.
+	//	@return $2 error: connection or reading error.
+	read(w http.ResponseWriter, r *http.Request) (users.User, error)
 }
 
+// externalSignUpHandler represents a external platform service which will be redirect for the user can authenticate from it.
 type externalSignUpHandler interface {
+	// requestSignUp performs the redirect to the requested platform
+	//  @param w http.ResponseWriter: response writer of the call.
+	//  @param r *http.Request: request instance of the call.
+	//	@return $1 error: connection or redirection error.
 	requestSignUp(w http.ResponseWriter, r *http.Request) error
 }
 
+// NewAuthHandler initializes a new AuthHandler instance.
+//  @param repo database.AuthRepository: AuthRepository interface for the authentication handling.
+//  @param r handlers.RequestReader: RequestReader interface for reading request operations.
+//  @param w handlers.ResponseWriter: ResponseWriter interface for writing request response operations.
+//  @param conf config.ConfigInfo: keeps the config information of the service.
+//  @return u AuthHandler: new AuthHandler instance.
 func NewAuthHandler(repo database.AuthRepository, r handlers.RequestReader, w handlers.ResponseWriter, conf config.ConfigInfo) (u AuthHandler) {
 	fbHandler := newFacebookHandler(conf)
 	gHandler := newGoogleHandler(conf)
@@ -41,28 +70,29 @@ func NewAuthHandler(repo database.AuthRepository, r handlers.RequestReader, w ha
 		writer:     w,
 		repository: repo,
 		config:     conf,
-		userReaders: map[string]userReader{
-			"system": systemSignUpHandler{
+		userReaders: map[handlerName]userReader{
+			systemHandlerName: systemUserReader{
 				reader: r,
 				writer: w,
 			},
-			"google":   gHandler,
-			"facebook": fbHandler,
+			googleHandlerName:   gHandler,
+			facebookHandlerName: fbHandler,
 		},
-		externalSignHandlers: map[string]externalSignUpHandler{
-			"google":   gHandler,
-			"facebook": fbHandler,
+		externalSignHandlers: map[handlerName]externalSignUpHandler{
+			googleHandlerName:   gHandler,
+			facebookHandlerName: fbHandler,
 		},
 	}
 }
 
+// HandleAuth implements the user authentication actions.
 func (a AuthHandler) HandleAuth(w http.ResponseWriter, r *http.Request) {
 	log.Println("Handling auth...")
 	vars := mux.Vars(r)
 	action := vars["action"]
 
 	if action == "external-sign" {
-		a.HandleExternalSign(w, r)
+		a.handleExternalSign(w, r)
 		return
 	}
 
@@ -71,14 +101,14 @@ func (a AuthHandler) HandleAuth(w http.ResponseWriter, r *http.Request) {
 		hName = "system"
 	}
 
-	h, err := a.getUserReader(hName)
+	userReader, err := a.getUserReader(handlerName(hName))
 	if err != nil {
 		a.handleError(w, err)
 		return
 	}
 
 	log.Printf("Sending %s sign up", hName)
-	user, err := h.readUser(w, r)
+	user, err := userReader.read(w, r)
 	if err != nil {
 		a.handleError(w, err)
 		return
@@ -102,13 +132,16 @@ func (a AuthHandler) HandleAuth(w http.ResponseWriter, r *http.Request) {
 	qValues.Set("tmp_id", tmpID)
 	rURL.RawQuery = qValues.Encode()
 
-	if hName != "system" {
+	if hName != systemHandlerName.string() {
 		http.Redirect(w, r, rURL.String(), http.StatusTemporaryRedirect)
 	}
 
 	log.Printf("Success %s %s", hName, action)
 }
 
+// handleSignUp performs a sign up process for the user requested.
+//  @param user users.User: user to sign up.
+//  @return tmpID string: just-one-use tmp id.
 func (a AuthHandler) handleSignUp(user users.User, w http.ResponseWriter, r *http.Request) (tmpID string, err error) {
 	user, session, err := a.signUp(user)
 	if err != nil {
@@ -119,6 +152,9 @@ func (a AuthHandler) handleSignUp(user users.User, w http.ResponseWriter, r *htt
 	return
 }
 
+// handleLogin performs a login process for the user requested.
+//  @param user users.User: user to login.
+//  @return tmpID string: just-one-use tmp id.
 func (a AuthHandler) handleLogin(user users.User, w http.ResponseWriter, r *http.Request) (tmpID string, err error) {
 	session, err := a.login(user)
 	if err != nil {
@@ -129,13 +165,14 @@ func (a AuthHandler) handleLogin(user users.User, w http.ResponseWriter, r *http
 	return
 }
 
-func (a AuthHandler) HandleExternalSign(w http.ResponseWriter, r *http.Request) {
+// handleExternalSign redirects the user to a external platform which will be used for the user sign in.
+func (a AuthHandler) handleExternalSign(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Handling external logging...")
 
 	vars := mux.Vars(r)
 	hName := vars["handler"]
 
-	h, err := a.getExternalSignHandler(hName)
+	h, err := a.getExternalSignHandler(handlerName(hName))
 	if err != nil {
 		a.handleError(w, err)
 		return
@@ -152,6 +189,11 @@ func (a AuthHandler) HandleExternalSign(w http.ResponseWriter, r *http.Request) 
 	log.Printf("Successfully redirected to %s", hName)
 }
 
+// signUp perfoms the user sign up process.
+//  @param userR users.User: user to sign up.
+//	@return user users.User: ending-user information.
+//	@return session auth.Session: new session of the user.
+//	@return err error: sign up, validation or connection error
 func (a AuthHandler) signUp(userR users.User) (user users.User, session auth.Session, err error) {
 	log.Printf("Saving sign up of %s %s", userR.Nickname, userR.Email)
 
@@ -194,6 +236,10 @@ func (a AuthHandler) signUp(userR users.User) (user users.User, session auth.Ses
 	return
 }
 
+// login performs the user login process.
+//  @param userR users.User: user to login.
+//	@return session auth.Session: new session of the user.
+//	@return err error: login, validation or connection error
 func (a AuthHandler) login(userR users.User) (session auth.Session, err error) {
 	log.Printf("Creating login session of %s %s", userR.Nickname, userR.Email)
 
@@ -212,12 +258,12 @@ func (a AuthHandler) login(userR users.User) (session auth.Session, err error) {
 		return
 	}
 
-	platform := "system"
+	platform := systemHandlerName
 	if len(userR.SignedWith) > 0 {
-		platform = userR.SignedWith[0].Platform
+		platform = handlerName(userR.SignedWith[0].Platform)
 	}
 
-	session, err = auth.NewSession(userR.ID, platform)
+	session, err = auth.NewSession(userR.ID, platform.string())
 	if err != nil {
 		return
 	}
@@ -226,7 +272,7 @@ func (a AuthHandler) login(userR users.User) (session auth.Session, err error) {
 	return
 }
 
-func (a AuthHandler) getExternalSignHandler(name string) (h externalSignUpHandler, err error) {
+func (a AuthHandler) getExternalSignHandler(name handlerName) (h externalSignUpHandler, err error) {
 	h, ok := a.externalSignHandlers[name]
 	if !ok {
 		err = sErrors.NewClientError(http.StatusBadRequest, "invalid callback handler: %s not exists", name)
@@ -234,7 +280,7 @@ func (a AuthHandler) getExternalSignHandler(name string) (h externalSignUpHandle
 	return
 }
 
-func (a AuthHandler) getUserReader(name string) (r userReader, err error) {
+func (a AuthHandler) getUserReader(name handlerName) (r userReader, err error) {
 	r, ok := a.userReaders[name]
 	if !ok {
 		err = sErrors.NewClientError(http.StatusBadRequest, "invalid signup handler: %s not exists", name)
@@ -256,6 +302,7 @@ func (a AuthHandler) handleError(w http.ResponseWriter, err error) {
 	})
 }
 
+// CheckAuthHandler handler to check if the user is authenticated for auth-required routes.
 type CheckAuthHandler struct {
 	next   http.Handler
 	writer handlers.ResponseWriter
@@ -280,6 +327,7 @@ func (c CheckAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c.next.ServeHTTP(w, r)
 }
 
+// NewCheckAuthHandler initializes a new CheckAuthHandler middleware.
 func NewCheckAuthHandler(w handlers.ResponseWriter) func(http.Handler) http.Handler {
 	return func(n http.Handler) http.Handler {
 		return &CheckAuthHandler{
@@ -289,6 +337,7 @@ func NewCheckAuthHandler(w handlers.ResponseWriter) func(http.Handler) http.Hand
 	}
 }
 
+// CheckNoAuthHandler handler to check if the user is not authenticated for no-required auth routes.
 type CheckNoAuthHandler struct {
 	next   http.Handler
 	writer handlers.ResponseWriter
@@ -310,7 +359,8 @@ func (c CheckNoAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c.next.ServeHTTP(w, r)
 }
 
-func NewNoCheckAuthHandler(w handlers.ResponseWriter) func(http.Handler) http.Handler {
+// NewCheckNoAuthHandler initializes a new CheckNoAuthHandler middleware.
+func NewCheckNoAuthHandler(w handlers.ResponseWriter) func(http.Handler) http.Handler {
 	return func(n http.Handler) http.Handler {
 		return &CheckNoAuthHandler{
 			next:   n,
