@@ -13,33 +13,38 @@ import (
 	"github.com/gorilla/mux"
 )
 
+// Server handles the routes set up and handlers.
 type Server struct {
 	srv *http.Server
 }
 
+// Run starts the server listening.
 func (s Server) Run() (err error) {
 	return s.srv.ListenAndServe()
 }
 
-func NewServer(conf config.ConfigInfo, db database.Database, host string, port int) (server *Server, err error) {
+// NewServer initializes a new *Server instance.
+//	@param conf config.ConfigInfo: keeps the current config information.
+//	@param db database.Database: database for the repositories.
+//	@param host string: host to listening.
+//	@param port int: port to listening.
+//	@return $1 *Server: new *Server instance.
+func NewServer(conf config.ConfigInfo, db database.Database, host string, port int) *Server {
 	r := mux.NewRouter().StrictSlash(false)
 	v1R := r.PathPrefix("/api/v1").Subrouter()
 
-	setUpMiddlewares(r)
+	setUpMiddlewares(r, conf)
 	setUpAPIHandlers(r)
 	setUpAuthHandlers(v1R, conf, db)
 
-	srv := &http.Server{
-		Handler:      r,
-		Addr:         fmt.Sprintf("%s:%d", host, port),
-		WriteTimeout: 30 * time.Second,
-		ReadTimeout:  30 * time.Second,
+	return &Server{
+		srv: &http.Server{
+			Handler:      r,
+			Addr:         fmt.Sprintf("%s:%d", host, port),
+			WriteTimeout: 30 * time.Second,
+			ReadTimeout:  30 * time.Second,
+		},
 	}
-
-	server = &Server{
-		srv: srv,
-	}
-	return
 }
 
 func setUpAPIHandlers(r *mux.Router) {
@@ -49,10 +54,10 @@ func setUpAPIHandlers(r *mux.Router) {
 	}).Methods("GET")
 }
 
-func setUpMiddlewares(r *mux.Router) {
+func setUpMiddlewares(r *mux.Router, conf config.ConfigInfo) {
 	r.Use(logginMiddleware)
 	r.Use(muxhandlers.RecoveryHandler(muxhandlers.PrintRecoveryStack(true)))
-	r.Use(muxhandlers.CORS(muxhandlers.AllowedOrigins([]string{"http://localhost:3000/"})))
+	r.Use(muxhandlers.CORS(muxhandlers.AllowedOrigins(conf.Server.AllowedOrigins)))
 }
 
 func setUpAuthHandlers(r *mux.Router, conf config.ConfigInfo, db database.Database) {
@@ -63,8 +68,8 @@ func setUpAuthHandlers(r *mux.Router, conf config.ConfigInfo, db database.Databa
 
 	ah := auth.NewAuthHandler(
 		repo,
-		handlers.NewRequestReaderImpl(),
-		handlers.NewResponseWriterImpl(),
+		handlers.GetRequestReaderImpl(),
+		handlers.GetResponseWriterImpl(),
 		conf,
 	)
 

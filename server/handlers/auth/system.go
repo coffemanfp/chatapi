@@ -8,12 +8,14 @@ import (
 	"github.com/coffemanfp/chat/users"
 )
 
-type systemSignUpHandler struct {
+const systemHandlerName handlerName = "system"
+
+type systemUserReader struct {
 	reader handlers.RequestReader
 	writer handlers.ResponseWriter
 }
 
-func (s systemSignUpHandler) readUser(w http.ResponseWriter, r *http.Request) (user users.User, err error) {
+func (s systemUserReader) read(w http.ResponseWriter, r *http.Request) (user users.User, err error) {
 	err = s.reader.JSON(r, &user)
 	if err != nil {
 		fmt.Printf("failed for %s\n", err)

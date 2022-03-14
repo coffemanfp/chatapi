@@ -8,6 +8,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// FileManagerConfig is the Config implementation for the config files.
 type FileManagerConfig struct {
 	config ConfigInfo
 }
@@ -16,6 +17,12 @@ func (f FileManagerConfig) Get() ConfigInfo {
 	return f.config
 }
 
+// NewEnvManagerConfig initializes a new ConfigInfo instance by the config file provided.
+//  @param env string: is the environment that must be used for get the config information.
+//	 For example: "local" is for a local configuration.
+//  @param configDir string: specifies the config dir path to locate the config files.
+// 	@return conf ConfigInfo: new ConfigInfo instance with the env vars information.
+// 	@return err error: error getting env vars values.
 func NewFileManagerConfig(env, configDir string) (conf Config, err error) {
 	var fc FileManagerConfig
 

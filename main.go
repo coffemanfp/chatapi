@@ -21,10 +21,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	server, err := server.NewServer(conf, db, conf.Server.Host, conf.Server.Port)
-	if err != nil {
-		log.Fatal(err)
-	}
+	server := server.NewServer(conf, db, conf.Server.Host, conf.Server.Port)
 
 	fmt.Printf("Listening on port: %d\n", conf.Server.Port)
 	log.Fatal(server.Run())
