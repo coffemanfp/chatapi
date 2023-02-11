@@ -4,21 +4,22 @@ import (
 	"database/sql"
 )
 
-// UsersRepository is the implementation of a user repository for the PostgreSQL database.
-type UsersRepository struct {
+// AccountRepository is the implementation of a account repository for the PostgreSQL database.
+type AccountRepository struct {
 	db *sql.DB
 }
 
-// NewAuthRepository initializes a new UsersRepository instance.
-// 	@param conn *PostgreSQLConnector: is the PostgreSQLConnector handler.
-//	@return usersRepo UsersRepository: new UsersRepository instance.
+// NewAuthRepository initializes a new AccountRepository instance.
+//
+//	@param conn *PostgreSQLConnector: is the PostgreSQLConnector handler.
+//	@return accountRepo AccountRepository: new AccountRepository instance.
 //	@return err error: database connection error.
-func NewUsersRepository(conn *PostgreSQLConnector) (usersRepo UsersRepository, err error) {
+func NewAccountRepository(conn *PostgreSQLConnector) (accountRepo AccountRepository, err error) {
 	db, err := conn.getConn()
 	if err != nil {
 		return
 	}
-	usersRepo = UsersRepository{
+	accountRepo = AccountRepository{
 		db: db,
 	}
 	return

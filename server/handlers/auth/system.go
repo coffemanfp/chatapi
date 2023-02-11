@@ -4,19 +4,19 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/coffemanfp/chat/account"
 	"github.com/coffemanfp/chat/server/handlers"
-	"github.com/coffemanfp/chat/users"
 )
 
 const systemHandlerName handlerName = "system"
 
-type systemUserReader struct {
+type systemAccountReader struct {
 	reader handlers.RequestReader
 	writer handlers.ResponseWriter
 }
 
-func (s systemUserReader) read(w http.ResponseWriter, r *http.Request) (user users.User, err error) {
-	err = s.reader.JSON(r, &user)
+func (s systemAccountReader) read(w http.ResponseWriter, r *http.Request) (account account.Account, err error) {
+	err = s.reader.JSON(r, &account)
 	if err != nil {
 		fmt.Printf("failed for %s\n", err)
 		s.writer.JSON(w, http.StatusBadRequest, handlers.Hash{

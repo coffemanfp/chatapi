@@ -5,9 +5,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-
-	"golang.org/x/oauth2/facebook"
-	"golang.org/x/oauth2/google"
 )
 
 // EnvManagerConfig is the Config implementation for the environment config vars.
@@ -20,8 +17,9 @@ func (f EnvManagerConfig) Get() ConfigInfo {
 }
 
 // NewEnvManagerConfig initializes a new ConfigInfo instance by the env config vars.
-// 	@return conf ConfigInfo: new ConfigInfo instance with the env vars information.
-// 	@return err error: error getting env vars values.
+//
+//	@return conf ConfigInfo: new ConfigInfo instance with the env vars information.
+//	@return err error: error getting env vars values.
 func NewEnvManagerConfig() (conf ConfigInfo, err error) {
 	conf, err = newConfigWithEnvVars()
 	return
@@ -43,22 +41,7 @@ func newConfigWithEnvVars() (conf ConfigInfo, err error) {
 			Port:           srvPort,
 			Host:           os.Getenv("SRV_HOST"),
 			AllowedOrigins: strings.Split(os.Getenv("SRV_ALLOWED_ORIGINS"), ";"),
-		},
-		OAuth: oauth{
-			Google: oauthProperties{
-				ClientID:     os.Getenv("OAUTH_GOOGLE_CLIENT_ID"),
-				ClientSecret: os.Getenv("OAUTH_GOOGLE_CLIENT_SECRET"),
-				RedirectURIS: strings.Split(os.Getenv("OAUTH_GOOGLE_REDIRECT_URIS"), ";"),
-				Scopes:       strings.Split(os.Getenv("OAUTH_GOOGLE_SCOPES"), ";"),
-				Endpoint:     google.Endpoint,
-			},
-			Facebook: oauthProperties{
-				ClientID:     os.Getenv("OAUTH_FACEBOOK_CLIENT_ID"),
-				ClientSecret: os.Getenv("OAUTH_FACEBOOK_CLIENT_SECRET"),
-				RedirectURIS: strings.Split(os.Getenv("OAUTH_FACEBOOK_REDIRECT_URIS"), ";"),
-				Scopes:       strings.Split(os.Getenv("OAUTH_FACEBOOK_SCOPES"), ";"),
-				Endpoint:     facebook.Endpoint,
-			},
+			SecretKey:      os.Getenv("SRV_SECRET_KEY"),
 		},
 		PostgreSQLProperties: postgreSQLProperties{
 			User:     os.Getenv("DB_USER"),

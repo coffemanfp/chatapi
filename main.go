@@ -21,7 +21,10 @@ func main() {
 		log.Fatal(err)
 	}
 
-	server := server.NewServer(conf, db, conf.Server.Host, conf.Server.Port)
+	server, err := server.NewServer(conf, db, conf.Server.Host, conf.Server.Port)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	fmt.Printf("Listening on port: %d\n", conf.Server.Port)
 	log.Fatal(server.Run())
@@ -46,8 +49,14 @@ func setUpDatabase(conf config.ConfigInfo) (db database.Database, err error) {
 		return
 	}
 
+	contactRepo, err := psql.NewContactRepository(db.Conn.(*psql.PostgreSQLConnector))
+	if err != nil {
+		return
+	}
+
 	db.Repositories = map[database.RepositoryID]interface{}{
-		database.AUTH_REPOSITORY: authRepo,
+		database.AUTH_REPOSITORY:    authRepo,
+		database.CONTACT_REPOSITORY: contactRepo,
 	}
 	return
 }

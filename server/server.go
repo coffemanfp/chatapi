@@ -9,6 +9,7 @@ import (
 	"github.com/coffemanfp/chat/database"
 	"github.com/coffemanfp/chat/server/handlers"
 	"github.com/coffemanfp/chat/server/handlers/auth"
+	"github.com/coffemanfp/chat/server/handlers/contacts"
 	muxhandlers "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
@@ -24,27 +25,41 @@ func (s Server) Run() (err error) {
 }
 
 // NewServer initializes a new *Server instance.
+//
 //	@param conf config.ConfigInfo: keeps the current config information.
 //	@param db database.Database: database for the repositories.
 //	@param host string: host to listening.
 //	@param port int: port to listening.
 //	@return $1 *Server: new *Server instance.
-func NewServer(conf config.ConfigInfo, db database.Database, host string, port int) *Server {
-	r := mux.NewRouter().StrictSlash(false)
+func NewServer(conf config.ConfigInfo, db database.Database, host string, port int) (server *Server, err error) {
+	r := mux.NewRouter().StrictSlash(true)
 	v1R := r.PathPrefix("/api/v1").Subrouter()
+	privateR := v1R.NewRoute().Subrouter()
+	privateR.Use(verifyJWTMiddleware(conf))
 
 	setUpMiddlewares(r, conf)
 	setUpAPIHandlers(r)
-	setUpAuthHandlers(v1R, conf, db)
-
-	return &Server{
+	err = setUpAuthHandlers(v1R, conf, db)
+	if err != nil {
+		return
+	}
+	err = setUpContactsHandlers(privateR, conf, db)
+	if err != nil {
+		return
+	}
+	server = &Server{
 		srv: &http.Server{
-			Handler:      r,
+			Handler: muxhandlers.CORS(
+				muxhandlers.AllowedHeaders([]string{"content-type"}),
+				muxhandlers.AllowedOrigins([]string{"*"}),
+				muxhandlers.AllowCredentials(),
+			)(r),
 			Addr:         fmt.Sprintf("%s:%d", host, port),
 			WriteTimeout: 30 * time.Second,
 			ReadTimeout:  30 * time.Second,
 		},
 	}
+	return
 }
 
 func setUpAPIHandlers(r *mux.Router) {
@@ -60,7 +75,7 @@ func setUpMiddlewares(r *mux.Router, conf config.ConfigInfo) {
 	r.Use(muxhandlers.CORS(muxhandlers.AllowedOrigins(conf.Server.AllowedOrigins)))
 }
 
-func setUpAuthHandlers(r *mux.Router, conf config.ConfigInfo, db database.Database) {
+func setUpAuthHandlers(r *mux.Router, conf config.ConfigInfo, db database.Database) (err error) {
 	repo, err := database.GetAuthRepository(db.Repositories)
 	if err != nil {
 		return
@@ -73,5 +88,23 @@ func setUpAuthHandlers(r *mux.Router, conf config.ConfigInfo, db database.Databa
 		conf,
 	)
 
-	r.HandleFunc("/auth/{action}/{handler}", ah.HandleAuth).Methods("GET", "POST")
+	r.HandleFunc("/auth/{action}", ah.HandleAuth).Methods("POST")
+	return
+}
+
+func setUpContactsHandlers(r *mux.Router, conf config.ConfigInfo, db database.Database) (err error) {
+	repo, err := database.GetContactRepository(db.Repositories)
+	if err != nil {
+		return
+	}
+
+	ch := contacts.NewContactHandler(
+		repo,
+		handlers.GetRequestReaderImpl(),
+		handlers.GetResponseWriterImpl(),
+		conf,
+	)
+
+	r.HandleFunc("/contacts", ch.GetByRange).Methods("GET")
+	return
 }
