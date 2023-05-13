@@ -9,7 +9,6 @@ import (
 	"github.com/coffemanfp/chat/database"
 	"github.com/coffemanfp/chat/server/handlers"
 	"github.com/coffemanfp/chat/server/handlers/auth"
-	"github.com/coffemanfp/chat/server/handlers/contacts"
 	muxhandlers "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 )
@@ -40,10 +39,6 @@ func NewServer(conf config.ConfigInfo, db database.Database, host string, port i
 	setUpMiddlewares(r, conf)
 	setUpAPIHandlers(r)
 	err = setUpAuthHandlers(v1R, conf, db)
-	if err != nil {
-		return
-	}
-	err = setUpContactsHandlers(privateR, conf, db)
 	if err != nil {
 		return
 	}
@@ -89,22 +84,5 @@ func setUpAuthHandlers(r *mux.Router, conf config.ConfigInfo, db database.Databa
 	)
 
 	r.HandleFunc("/auth/{action}", ah.HandleAuth).Methods("POST")
-	return
-}
-
-func setUpContactsHandlers(r *mux.Router, conf config.ConfigInfo, db database.Database) (err error) {
-	repo, err := database.GetContactRepository(db.Repositories)
-	if err != nil {
-		return
-	}
-
-	ch := contacts.NewContactHandler(
-		repo,
-		handlers.GetRequestReaderImpl(),
-		handlers.GetResponseWriterImpl(),
-		conf,
-	)
-
-	r.HandleFunc("/contacts", ch.GetByRange).Methods("GET")
 	return
 }

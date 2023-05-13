@@ -1,7 +1,10 @@
 package auth
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"log"
 	"net/http"
 
@@ -66,29 +69,15 @@ func (a AuthHandler) HandleAuth(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	action := vars["action"]
 
-	accountReader, err := a.getAccountReader(handlerName("system"))
+	var account account.Account
+	err := JSON(r, account)
 	if err != nil {
-		a.handleError(w, err)
-		return
-	}
-
-	log.Printf("Sending system sign up")
-	account, err := accountReader.read(w, r)
-	if err != nil {
-		a.handleError(w, err)
 		return
 	}
 
 	var id, code int
 
 	switch action {
-	case "signup":
-		id, err = a.handleSignUp(account, w, r)
-		if err != nil {
-			a.handleError(w, err)
-			return
-		}
-		code = 201
 	case "login":
 		id, err = a.handleLogin(account, w, r)
 		if err != nil {
@@ -108,60 +97,12 @@ func (a AuthHandler) HandleAuth(w http.ResponseWriter, r *http.Request) {
 	log.Println("Success", action)
 }
 
-// handleSignUp performs a sign up process for the account requested.
-//
-//	@param account account.Account: account to sign up.
-//	@return id int: account authenticated id.
-func (a AuthHandler) handleSignUp(account account.Account, w http.ResponseWriter, r *http.Request) (id int, err error) {
-	id, _, err = a.signUp(account)
-	return
-}
-
 // handleLogin performs a login process for the account requested.
 //
 //	@param account account.Account: account to login.
 //	@return id int: account authenticated id.
 func (a AuthHandler) handleLogin(account account.Account, w http.ResponseWriter, r *http.Request) (id int, err error) {
 	id, _, err = a.login(account)
-	return
-}
-
-// signUp perfoms the account sign up process.
-//
-//	 @param accountR account.Account: account to sign up.
-//		@return id int: account authenticated id.
-//		@return session auth.Session: new session of the account.
-//		@return err error: sign up, validation or connection error
-func (a AuthHandler) signUp(accountR account.Account) (id int, session auth.Session, err error) {
-	log.Printf("Saving sign up of %s %s", accountR.Nickname, accountR.Email)
-
-	accountR, err = account.New(accountR)
-	if err != nil {
-		return
-	}
-
-	log.Println("New generated account")
-
-	id, err = a.repository.SignUp(accountR, session)
-	if err != nil {
-		return
-	}
-
-	accountR.ID = id
-
-	session, err = auth.NewSession(accountR.ID, "system")
-	if err != nil {
-		return
-	}
-
-	log.Println("New generated session")
-
-	err = a.repository.UpsertSession(session)
-	if err != nil {
-		return
-	}
-
-	log.Println("Successfully registered in database")
 	return
 }
 
@@ -190,19 +131,6 @@ func (a AuthHandler) login(accountR account.Account) (id int, session auth.Sessi
 	}
 
 	session, err = auth.NewSession(id, "system")
-	if err != nil {
-		return
-	}
-
-	err = a.repository.UpsertSession(session)
-	return
-}
-
-func (a AuthHandler) getAccountReader(name handlerName) (r accountReader, err error) {
-	r, ok := a.accountReaders[name]
-	if !ok {
-		err = sErrors.NewClientError(http.StatusBadRequest, "invalid signup handler: %s not exists", name)
-	}
 	return
 }
 
@@ -285,4 +213,33 @@ func NewCheckNoAuthHandler(w handlers.ResponseWriter) func(http.Handler) http.Ha
 			writer: w,
 		}
 	}
+}
+
+// Temp code
+
+func JSON(r *http.Request, v interface{}) (err error) {
+	if r == nil {
+		err = fmt.Errorf("invalid request value: empty or nil *http.Request")
+		err = sErrors.NewClientError(http.StatusInternalServerError, sErrors.SERVER_ERROR_MESSAGE, err)
+		return
+	}
+	if !checkContentTypeJSON(r.Header) {
+		err = fmt.Errorf("invalid content type: Content-Type header is not application/json")
+		return
+	}
+
+	err = json.NewDecoder(r.Body).Decode(v)
+	if err != nil {
+		if errors.Is(err, io.EOF) {
+			err = fmt.Errorf("error checking body: empty body content (%s)", err)
+			return
+		}
+
+		err = fmt.Errorf("error decoding body: %s", err)
+	}
+	return
+}
+
+func checkContentTypeJSON(h http.Header) (match bool) {
+	return h.Get("Content-Type") == "application/json"
 }

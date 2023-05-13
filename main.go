@@ -49,14 +49,8 @@ func setUpDatabase(conf config.ConfigInfo) (db database.Database, err error) {
 		return
 	}
 
-	contactRepo, err := psql.NewContactRepository(db.Conn.(*psql.PostgreSQLConnector))
-	if err != nil {
-		return
-	}
-
 	db.Repositories = map[database.RepositoryID]interface{}{
-		database.AUTH_REPOSITORY:    authRepo,
-		database.CONTACT_REPOSITORY: contactRepo,
+		database.AUTH_REPOSITORY: authRepo,
 	}
 	return
 }

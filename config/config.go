@@ -8,7 +8,7 @@ type Config interface {
 	Get() ConfigInfo
 }
 
-// ConfigInfo is the common structure to contain all the config fields.
+// ConfigInfo is the common	 structure to contain all the config fields.
 type ConfigInfo struct {
 	Server               server               `yaml:"server"`
 	OAuth                oauth                `yaml:"oauth"`
